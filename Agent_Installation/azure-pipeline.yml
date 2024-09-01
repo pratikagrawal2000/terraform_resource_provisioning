@@ -1,0 +1,289 @@
+# .........Repository.........
+trigger: none
+
+# .........Parameter.........
+parameters:
+
+
+  - name: subscription_id
+    displayName: Subscription Id
+    type: string
+    default: bf1d9056-4f86-4901-9eea-122d3b998e90
+
+  - name: vm_name
+    displayName: VM Name (MAX 15 CHARS)
+    type: string
+    default: 'Server1' 
+
+  - name: os_type 
+    displayName: OS Type 
+    type: string
+    values:
+      - "Linux"
+      - "Windows"
+
+  - name: snow_agent
+    displayName: Snow
+    type: boolean
+    default: false
+    values:
+      - true
+      - false
+
+
+  - name: falcon_agent
+    displayName: Falcon
+    type: boolean
+    default: false
+    values:
+      - true
+      - false   
+
+  - name: cis_agent
+    displayName: CIS
+    type: boolean
+    default: false
+    values:
+      - true
+      - false      
+
+  - name: opsramp_agent
+    displayName: Opsramp
+    type: boolean
+    default: false
+    values:
+      - true
+      - false  
+
+  - name: centrify_agent
+    displayName: Centrify / Windows Domain Join
+    type: boolean
+    default: false
+    values:
+      - true
+      - false      
+
+  - name: big_fix
+    displayName:  BigFix
+    type: boolean
+    default: false
+    values:
+      - true
+      - false    
+
+  - name: enablemonitoring
+    displayName:  SIEM Monitoring
+    type: boolean
+    default: false
+    values:
+      - true
+      - false     
+
+  - name: domain_name
+    displayName: Domain Name
+    type: string
+    default: "WKRAINIER.COM"
+    values:
+      - "WKRAINIER.COM"
+      - "NA.WKGLOBAL.COM"
+
+  - name: domain_users
+    displayName: Domain Users
+    type: string
+    default: "sGLBCloudOps@na.wkglobal.com"
+
+  - name: wk_environment_name
+    displayName: wk_environment_name
+    type: string
+    default: ' '     
+
+  - name: division_code
+    displayName: Division Code
+    type: string
+    default: "d000"
+
+  - name: business_code
+    displayName: Business Unit
+    type: string
+    default: "b000"
+
+  - name: cloud_subs
+    displayName: Cloud Subscription
+    type: string
+    default: "D00-B000-WKServices-Z-Default"    
+
+  - name: t_zone
+    displayName: Time Zone
+    type: string
+    default: "Etc/UTC"
+
+variables:
+- name: agent_S3_url
+  value: https://ause1-as3-p1-vmagents.s3.amazonaws.com/AgentScript
+- name: SubscriptionName
+  value: "NA"
+
+stages:
+  - stage: CheckName
+    jobs:
+    - job: check_name
+      displayName: VM name validation
+      pool: 
+        vmImage: 'windows-latest'
+      steps:
+
+      - task: AzureKeyVault@2
+        displayName: 'Azure Key Vault: zuse2-kvt-t1-iac-vm'
+        inputs:
+          azureSubscription: 'WK-Service-VM'
+          KeyVaultName: 'zuse2-kvt-t1-iac-vm'
+
+      - powershell: |
+          $url = "https://$(function-app-name).azurewebsites.net/api/CheckName?code=$(function-code)&computer_name=${{parameters.vm_name}}&domain_name=${{parameters.domain_name}}"
+          $headers = @{ "x-functions-key" = "$(function-code)" }
+          $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
+          if ($response.name_available -ne $true) {
+              Write-Host "VM is already joined to domain. Please use a different VM."
+              exit 1
+          }
+        displayName: 'Call Azure Function to Check VM Name'
+
+  - stage: agents_install
+    displayName: Install Agents    
+    jobs:
+    - job: Installagent
+      timeoutInMinutes: 180
+      displayName: Install agent 
+      pool:
+        vmImage: "ubuntu-22.04"     
+      steps:
+      - checkout: self
+
+      - task: AzureKeyVault@2
+        displayName: 'Azure Key Vault: zuse2-kvt-t1-iac-vm'
+        inputs:
+          azureSubscription: 'WK-Service-VM'
+          KeyVaultName: zuse2-kvt-t1-iac-vm 
+
+      - task: AzurePowerShell@4
+        displayName: 'Azure PowerShell Agent Global Values'
+        name: AgentInputValues
+        inputs:
+          azureSubscription: 'WK-Service-VM'
+          ScriptType: 'InlineScript'
+          Inline: |
+              Write-Host "##vso[task.setvariable variable=SubscriptionName]$(SubscriptionName)"            
+              Set-AzContext -SubscriptionID ${{ parameters.subscription_id }}
+              $VMName="${{parameters.vm_name}}"
+              $VMPair = $VMName.Split(",", [System.StringSplitOptions]::RemoveEmptyEntries);
+              foreach($vm in $vmPair)
+              {
+                $vmdetails= Get-AzVM -Name $vm
+                if($null -ne $vmdetails){
+                $Ostype = $vmdetails.StorageProfile.osDisk.osType
+                Write-host $Ostype                                   
+                Write-host "##vso[task.setvariable variable=OS]$Ostype"
+                break;
+                }
+                else{
+                  Write-error $vm is not available in the given subscription
+                }
+              }                
+                if ('${{parameters.domain_name}}' -eq 'NA.WKGLOBAL.COM') {                  
+                                 $sudoers_file ="naadmin"
+                                 $sudoers="$(naadmin)"
+                                 $oup ="OU=AZE,OU=P-Cloud Servers,OU=NA-Infrastructure,DC=na,DC=wkglobal,DC=com"
+                                 Write-Host "##vso[task.setvariable variable=DomainServiceAcc]$(nawkglobaluser)"
+                                 Write-Host "##vso[task.setvariable variable=DomainServiceAccPwd]$(nawkglobalpassword)"
+                                 Write-Host "##vso[task.setvariable variable=DomainServiceAccWindows]$(nawkglobaluser)"
+                                 Write-Host "##vso[task.setvariable variable=DomainServiceAccPwdWindows]$(nawkglobalpassword)"
+                                 Write-Host "##vso[task.setvariable variable=DomainServiceAccLinux]$(nawkglobalusercentrify)"
+                                 Write-Host "##vso[task.setvariable variable=DomainServiceAccPwdLinux]$(nawkglobalpassword)"
+                                 Write-Host "##vso[task.setvariable variable=sudoers]$sudoers"
+                                 Write-Host "##vso[task.setvariable variable=sudoers_file]$sudoers_file"
+                                 Write-Host "##vso[task.setvariable variable=oupath]$oup"
+                                    return
+                                  } else {
+                                  $oup ="OU=Azure,OU=GBS Cloud Services,DC=WKRainier,DC=com"
+                                  Write-Host "##vso[task.setvariable variable=DomainServiceAcc]$(wkrainieruser)"
+                                  Write-Host "##vso[task.setvariable variable=DomainServiceAccPwd]$(wkrainierpassword)"
+                                  Write-Host "##vso[task.setvariable variable=oupath]$oup"
+                                  Write-Host "##vso[task.setvariable variable=DomainServiceAccWindows]$(wkrainieruser)"
+                                  Write-Host "##vso[task.setvariable variable=DomainServiceAccPwdWindows]$(wkrainierpassword)"
+                                  Write-Host "##vso[task.setvariable variable=DomainServiceAccLinux]$(nawkglobalusercentrify)"
+                                  Write-Host "##vso[task.setvariable variable=DomainServiceAccPwdLinux]$(nawkglobalpassword)"                             
+                                  Write-Host "##vso[task.setvariable variable=sudoers]$sudoers"
+                                  Write-Host "##vso[task.setvariable variable=sudoers_file]$sudoers_file"
+                                  }      
+          azurePowerShellVersion: 11.0.0
+                  
+      - task: AzurePowerShell@4
+        displayName: 'Install Linux Agent'
+        condition: eq('${{ parameters.os_type }}', 'Linux')
+        name: LinuxWKAgent
+        inputs:
+          azureSubscription: 'WK-Service-VM'
+          ScriptPath: '$(System.DefaultWorkingDirectory)/Agent_Installation/linux-installagent.ps1'          
+          ScriptArguments: '
+          -subscriptionID "${{ parameters.subscription_id }}"
+          -vm_name_list "${{parameters.vm_name}}"
+          -snow_agent "${{ parameters.snow_agent }}"          
+          -falcon_agent "${{ parameters.falcon_agent }}"
+          -cis_agent "${{ parameters.cis_agent }}"         
+          -opsramp_agent "${{ parameters.opsramp_agent }}"
+          -centrify_agent "${{ parameters.centrify_agent }}"                   
+          -big_fix "${{ parameters.big_fix }}"
+          -enablemonitoring "${{ parameters.enablemonitoring }}"
+          -domain_name "${{ parameters.domain_name }}"
+          -domain_users "${{ parameters.domain_users }}"
+          -wk_environment_name "${{ parameters.wk_environment_name }}"
+          -division_code "${{ parameters.division_code }}"
+          -business_code "${{ parameters.business_code }}"
+          -t_zone "${{ parameters.t_zone }}"                    
+          -cloudprovider "Azure"
+          -opsramp_function_name "$(function-app-name)"
+          -opsramp_integration_id "${{ parameters.subscription_id }}"
+          -opsramp_function_code "$(function-code)"
+          -opsramp_key_id "$(wk-services-ADO-opsramp-key-id)"
+          -opsramp_secret_id "$(wk-services-ADO-opsramp-secret-id)"
+          -service_account $(DomainServiceAccLinux)
+          -service_account_password $(DomainServiceAccPwdLinux)
+          -storage_account_connection_string "$(cftablestoragekey)"
+          -agent_S3_url "$(agent_S3_url)"' 
+          azurePowerShellVersion: 11.0.0
+
+      - task: AzurePowerShell@4
+        displayName: 'Install Windows Agent'
+        condition: eq('${{ parameters.os_type }}', 'Windows')
+        name: AgentInstallation
+        inputs:
+          azureSubscription: 'WK-Service-VM'
+          ScriptPath: '$(System.DefaultWorkingDirectory)/Agent_Installation/windows-installagent.ps1'
+          ScriptArguments: '
+          -subscriptionID "${{ parameters.subscription_id }}"
+          -vm_name_list "${{parameters.vm_name}}"
+          -snow_agent "${{ parameters.snow_agent }}"          
+          -falcon_agent "${{ parameters.falcon_agent }}"
+          -cis_agent "${{ parameters.cis_agent }}"         
+          -opsramp_agent "${{ parameters.opsramp_agent }}"          
+          -centrify_agent "${{ parameters.centrify_agent }}"                 
+          -big_fix "${{ parameters.big_fix }}"
+          -enablemonitoring "${{ parameters.enablemonitoring }}"
+          -domain_name "${{ parameters.domain_name }}"
+          -domain_users "${{ parameters.domain_users }}"
+          -wk_environment_name "${{ parameters.wk_environment_name }}"
+          -division_code "${{ parameters.division_code }}"
+          -business_code "${{ parameters.business_code }}"
+          -t_zone "${{ parameters.t_zone }}"
+          -aws_access_key "$(awsaccesskey)" 
+          -aws_secret_key "$(awssecretaccess)"          
+          -cloudprovider "Azure"
+          -opsramp_function_name "$(function-app-name)"
+          -opsramp_integration_id "${{ parameters.subscription_id }}"
+          -opsramp_function_code "$(function-code)"
+          -opsramp_key_id "$(wk-services-ADO-opsramp-key-id)"
+          -opsramp_secret_id "$(wk-services-ADO-opsramp-secret-id)"
+          -service_account "$(DomainServiceAccWindows)"
+          -service_account_password "$(DomainServiceAccPwdWindows)"          
+          -agent_S3_url "$(agent_S3_url)"'
+          azurePowerShellVersion: 11.0.0

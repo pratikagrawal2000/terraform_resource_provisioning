@@ -1,0 +1,13 @@
+[
+
+    {
+        "Locations": "Norway West|Norway East|Germany North|Germany West Central|Switzerland North|Switzerland West|France South |France Central|UK West|UK South|North Europe|West Europe|Sweden Central",
+        "LinuxDCR":"/subscriptions/bd17fe21-36c7-4172-8194-8e60e8b1405e/resourceGroups/zeuw1-gbs-gis-soar-siem-rg/providers/Microsoft.Insights/dataCollectionRules/GBS-GIS-SOC-Europe-Rule",
+        "WindowsDCR":"/subscriptions/bd17fe21-36c7-4172-8194-8e60e8b1405e/resourceGroups/zeuw1-gbs-gis-soar-siem-rg/providers/Microsoft.Insights/dataCollectionRules/GBS-GIS-SOC-Windows-Rule01"
+    },
+    {
+        "Locations": "Australia Central|Australia Central 2|Korea South|Korea Central|West India|Central India|South India|Australia East|Souteast Asia|East Asia|Japan West|Japan East|Australia Southeast|UAE Central|UAE North|Central US|South Central US|North Central US|West US 3|West US 2|West US|West Central US|East US|East US 2|Canada Central|Canada East",
+        "LinuxDCR":"/subscriptions/bd17fe21-36c7-4172-8194-8e60e8b1405e/resourceGroups/ZUSE2-GBS-GIS-SIEM-Agent/providers/Microsoft.Insights/dataCollectionRules/GBS-GIS-SOC-LIN-Rule02",
+        "WindowsDCR":"/subscriptions/bd17fe21-36c7-4172-8194-8e60e8b1405e/resourceGroups/ZUSE2-GBS-GIS-SIEM-Agent/providers/microsoft.insights/dataCollectionRules/GBS-GIS-Common-Sec-WIN-01"
+    }
+] 

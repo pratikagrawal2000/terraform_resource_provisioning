@@ -1,0 +1,22 @@
+[
+    {
+        "Locations": "East US|East US 2|Canada Central|Canada East",
+		"dnsServerIP": "10.245.22.13,10.245.22.14,10.243.160.100,10.243.160.200"
+    },
+    {
+        "Locations": "West US 3|West US 2|West US|West Central US",
+		"dnsServerIP": "10.231.58.12,10.243.160.99,10.231.58.14,10.243.160.105"
+    },
+    {
+        "Locations": "Central US|South Central US|North Central US",
+		"dnsServerIP": "10.191.92.12,10.191.92.17,10.243.160.99,10.243.160.105"
+    },
+    {
+        "Locations": "Norway West|Norway East|Germany North|Germany West Central|Switzerland North|Switzerland West|France South |France Central|UK West|UK South|North Europe|West Europe|Sweden Central",
+        "dnsServerIP": "10.233.70.18,10.233.70.19,10.236.48.38,10.236.48.118"
+    },
+    {
+        "Locations": "Australia Central|Australia Central 2|Korea South|Korea Central|West India|Central India|South India|Australia East|Souteast Asia|East Asia|Japan West|Japan East|Australia Southeast|UAE Central|UAE North",
+        "dnsServerIP": "10.241.22.12,10.241.22.13,10.246.2.12,10.246.2.84"
+    }
+]    
