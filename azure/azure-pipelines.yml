@@ -1,0 +1,215 @@
+name: ${{ parameters.vm_name }}_$(Date:yyyyMMdd)$(Rev:.r)
+parameters:
+# Basic Information 
+- name: subscription_id
+  displayName: Subsription ID
+  type: string
+
+- name: vm_resource_group_name
+  displayName: Virtual Machine Resource Group Name
+  type: string
+
+
+# VM Details
+
+- name: subnet_id
+  displayName: Subnet Id
+  type: string
+
+- name: vm_name
+  displayName: Virtual Machine Name
+  type: string
+
+- name: os_version
+  displayName: Operating System Version
+  type: string
+
+- name: root_volume_size
+  displayName: OS disk size
+  type: number
+  default: 128
+
+- name: vm_type
+  displayName: Virtual Machine Size
+  type: string
+  default: Standard_D2d_v4
+
+- name: vm_availability_zone
+  displayName: Virtual Machine Availability Zone
+  type: number
+  default: 0
+
+- name: availability_set_resource_id
+  displayName: Availability Set Resource Id
+  type: string
+  default: "NA"
+
+- name: swap_disk_size
+  displayName: Swap Disk Size
+  type: string
+
+- name: storage_account_primary_endpoint
+  displayName: Storage primary Endpoint
+  type: string
+
+- name: encryption_key_name
+  displayName: Encryption key Name
+  type: string
+  default: "NA"
+
+- name: key_vault_id
+  displayName: Key Vault Id used for OS Disk Encryption
+  type: string
+  default: "NA"
+
+- name: accelerated_networking
+  displayName: Accelerated Networking
+  type: string
+  default: false
+###############################
+
+- name: wk_division_code
+  displayName: wk_division_code
+  type: string
+  
+- name: wk_bu_code
+  displayName: wk_bu_code
+  type: string
+
+- name: wk_application_name
+  displayName: wk_application_name
+  type: string
+  
+- name: wk_application_bit_id
+  displayName: wk_application_bit_id
+  type: string
+
+- name: wk_environment_name
+  displayName: wk_environment_name
+  type: string
+
+- name: wk_data_classification
+  displayName: wk_data_classification
+  type: string
+
+- name: wk_patch_class
+  displayName: wk_patch_class
+  type: string
+
+- name: wk_backup_policy
+  displayName: wk_backup_policy
+  type: string
+
+
+- name: wk_resource_class
+  displayName: wk_resource_class
+  type: string
+
+- name: wk_resource_name
+  displayName: wk_resource_name
+  type: string
+
+- name: wk_requestor
+  displayName: wk_requestor
+  type: string
+
+- name: wk_business_owner
+  displayName: wk_business_owner
+  type: string
+
+- name: wk_technical_owner
+  displayName: wk_technical_owner
+  type: string
+
+- name: wk_app_support_group
+  displayName: wk_app_support_group
+  type: string
+
+- name: wk_infra_support_group
+  displayName: wk_infra_support_group
+  type: string
+
+variables:
+  - group: azure-spn-cred
+
+trigger: none
+
+jobs:
+- job: create_vm
+  workspace:
+    clean: all
+  displayName: VM provisioning
+
+  steps:
+    - checkout: self
+      path: 's/self'
+    
+    - task: TerraformInstaller@0
+      name: terraform_install
+      displayName: 'Terraform Install'
+      inputs:
+        terraformVersion: '1.8.5'
+    - script: |
+        echo $(tenant_id)
+        echo $(client_id)
+        echo "##vso[task.setvariable variable=tenant_id]$(tenant_id)"
+        echo "##vso[task.setvariable variable=client_id]$(client_id)"
+        echo "##vso[task.setvariable variable=client_secret]$(client_secret)"
+      displayName: 'Set Terraform Environment Variables'
+
+    - task: CmdLine@2
+      name: terraform_init
+      displayName: 'Terraform Init'
+      inputs:
+        script: terraform init
+        workingDirectory: '$(Agent.BuildDirectory)/s/self/azure'
+        failOnStderr: true
+
+    - task: CmdLine@2
+      name: terraform_apply
+      displayName: 'Terraform Apply'
+      inputs:
+        script: |
+          export TF_VAR_tenant_id=$(tenant_id)
+          export TF_VAR_client_id=$(client_id)
+          export TF_VAR_client_secret=$(client_secret)
+          terraform apply \
+            -var 'tenant_id=$(tenant_id)' \
+            -var 'client_id=$(client_id)' \
+            -var 'client_secret=$(client_secret)' \
+            -var 'subscription_id=${{ parameters.subscription_id }}' \
+            -var 'os_version=${{ parameters.os_version }}' \
+            -var 'vm_resource_group_name=${{ parameters.vm_resource_group_name }}' \
+            -var 'vm_name=${{ parameters.vm_name }}' \
+            -var 'subnet_id=${{ parameters.subnet_id }}' \
+            -var 'vm_type=${{ parameters.vm_type }}' \
+            -var 'root_volume_size=${{ parameters.root_volume_size }}' \
+            -var 'vm_availability_zone=${{ parameters.vm_availability_zone }}' \
+            -var 'availability_set_resource_id=${{ parameters.availability_set_resource_id }}' \
+            -var 'wk_division_code=${{parameters.wk_division_code}}' \
+            -var 'wk_bu_code=${{parameters.wk_bu_code}}' \
+            -var 'wk_application_name=${{parameters.wk_application_name}}' \
+            -var 'wk_application_bit_id=${{parameters.wk_application_bit_id}}' \
+            -var 'wk_environment_name=${{parameters.wk_environment_name}}' \
+            -var 'wk_data_classification=${{parameters.wk_data_classification}}' \
+            -var 'wk_resource_class=${{parameters.wk_resource_class}}' \
+            -var 'wk_resource_name=${{parameters.wk_resource_name}}' \
+            -var 'wk_requestor=${{parameters.wk_requestor}}' \
+            -var 'wk_technical_owner=${{parameters.wk_technical_owner}}' \
+            -var 'wk_business_owner=${{parameters.wk_business_owner}}' \
+            -var 'wk_infra_support_group=${{parameters.wk_infra_support_group}}' \
+            -var 'wk_app_support_group=${{parameters.wk_app_support_group}}' \
+            -var 'wk_backup_policy=${{parameters.wk_backup_policy}}' \
+            -var 'wk_patch_class=${{parameters.wk_patch_class}}' \
+            -var 'swap_disk_size=${{parameters.swap_disk_size}}' \
+            -var 'encryption_key_name=${{ parameters.encryption_key_name }}' \
+            -var 'key_vault_id=${{ parameters.key_vault_id }}' \
+            -var 'storage_account_primary_endpoint=${{ parameters.storage_account_primary_endpoint }}' \
+            -var 'accelerated_networking=${{ parameters.accelerated_networking }}' \
+            -auto-approve
+          vm_private_ip=$(terraform output -json | jq -r .vm_private_ip.value)
+          vm_os_type=$(terraform output -json | jq -r .vm_os_type.value)
+          echo "##vso[task.setvariable variable=vm_private_ip;isOutput=true]$vm_private_ip"
+          echo "##vso[task.setvariable variable=vm_os_type;isOutput=true]$vm_os_type"
+        workingDirectory: '$(Agent.BuildDirectory)/s/self/azure'
+        failOnStderr: true
